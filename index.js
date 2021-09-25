@@ -81,7 +81,7 @@ booksy.get("/l/:lang" , (req,res)=> {
 
 /***************************** POST API ***********************/
 /*
-Route             /books/new
+Route             /book/new
 Description       Add new books
 Access            PUBLIC
 Parameter         None
@@ -94,6 +94,59 @@ booksy.post("/book/new",(req,res)=>{
   return res.json({updatedBooks:database.books});
 });
 /*----------------------------------------------------------------------------*/
+/***************************** DELETE API ***********************/
+/*
+Route             /book/delete
+Description       Delete book
+Access            PUBLIC
+Parameter         isbn
+Methods           DELETE
+*/
+booksy.delete("/book/delete/:isbn",(req,res)=>{
+  //whichever book that doesnot match with the isbn, just send that to updatedBook
+  //and rest will be filtered out
+  const updatedBookDatabase = database.books.filter((book)=>
+    parseInt(book.ISBN)!==req.params.isbn
+  );
+
+  database.books = updatedBookDatabase;
+  return res.json({books:database.books});
+
+});
+/*
+Route             /book/delete/author
+Description       Delete book
+Access            PUBLIC
+Parameter         isbn,authorId
+Methods           DELETE
+*/
+booksy.delete("/book/delete/author/:isbn/:authorId",(req,res)=>{
+  //update the BookDatabase
+  database.books.forEach((book)=>{
+    if(book.ISBN===req.params.isbn){
+      const newAuthorList = book.author.filter((eachAuthor)=>
+      eachAuthor !==parseInt(req.params.authorId)
+    );
+    book.author= newAuthorList;
+    return;
+    }
+  });
+  //update the AuthorDatabase
+  database.author.forEach((eachAuthor)=>{
+    if(eachAuthor.id === parseInt(req.params.authorId)){
+      const newBookList = eachAuthor.books.filter((book)=>
+        book!== req.params.isbn
+      );
+      eachAuthor.books=newBookList;
+      return;
+    }
+  });
+    return res.json({
+      book:database.books,
+      author:database.author,
+      message:"author is no-more present in the list"
+    });
+  });
 
 
 /*----------------------------------Author------------------------------------------*/
@@ -218,7 +271,37 @@ booksy.post("/publication/new",(req,res)=>{
   database.publication.push(newPublication);
   return res.json({updatedPublications:database.publication});
 });
+/***************************** PUT API ***********************/
+/*
+Route             /publication/update/book
+Description       Update/Add new publication
+Access            PUBLIC
+Parameter         isbn
+Methods           PUT
+*/
 
+booksy.put("/publication/update/book/:isbn",(req,res)=>{
+  //update the publication database
+  database.publication.forEach((pub)=>{
+    if(pub.id===req.body.pubId){
+      pub.books.push(req.params.isbn);
+    };
+    //update the book Database
+    database.books.forEach((book)=>{
+      if(book.ISBN===req.params.isbn){
+        book.publications = req.body.pubId;
+        return;
+      }
+    });
+    return res.json({
+      books:database.books,
+      publications:database.publication,
+      message:"successfully updated publications"
+    })
+  });
+
+
+})
 booksy.listen(3000,()=>{
   console.log("server is up and running");
 });
