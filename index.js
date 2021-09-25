@@ -1,9 +1,14 @@
 const express = require("express");
+//body-parser
+const bodyParser = require("body-parser");
 //Database
 const database= require("./database");
 
 //Initialize express
 const booksy = express();
+
+//Initialize body-bodyParser
+booksy.use(bodyParser.urlencoded({extended:true}));
 /*----------------------BOOKS-------------------------------------------*/
 /*
 Route             /
