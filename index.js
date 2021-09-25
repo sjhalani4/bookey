@@ -9,7 +9,10 @@ const booksy = express();
 
 //Initialize body-bodyParser
 booksy.use(bodyParser.urlencoded({extended:true}));
+booksy.use(bodyParser.json());
 /*----------------------BOOKS-------------------------------------------*/
+
+/***************************** GET API ***********************/
 /*
 Route             /
 Description       Get all the books
@@ -75,6 +78,24 @@ booksy.get("/l/:lang" , (req,res)=> {
   return res.json ({book:getSpecificBook})
 
 });
+
+/***************************** POST API ***********************/
+/*
+Route             /books/new
+Description       Add new books
+Access            PUBLIC
+Parameter         None
+Methods           POST
+*/
+booksy.post("/book/new",(req,res)=>{
+  const newBook = req.body;   /* requesting to server for inserting an object into our database(body)(existing set of object)
+                                   so req.body fetch the body of the request */
+  database.books.push(newBook);
+  return res.json({updatedBooks:database.books});
+});
+/*----------------------------------------------------------------------------*/
+
+
 /*----------------------------------Author------------------------------------------*/
 /*
 Route             /author
@@ -123,8 +144,20 @@ booksy.get("/author/books/:isbn",(req,res)=>{
   }
   return res.json ({author:getSpecificAuthor})
 });
-/*----------------------------------------------------------------------------*/
-
+/***************************** POST API ***********************/
+/*
+Route             /author/new
+Description       Add new author
+Access            PUBLIC
+Parameter         None
+Methods           POST
+*/
+booksy.post("/author/new",(req,res)=>{
+  const newAuthor = req.body;   /* requesting to server for inserting an object into our database(body)(existing set of object)
+                                   so req.body fetch the body of the request */
+  database.author.push(newAuthor);
+  return res.json({updatedAuthors:database.author});
+});
 /*----------------------------------Publications------------------------------------------*/
 /*
 Route             /publication
@@ -170,6 +203,20 @@ booksy.get("/publication/books/:isbn", (req,res)=>{
     return res.json({error:`No publication found for the book of ${req.params.isbn} id`})
   }
   return res.json ({publications:getSpecificPublication});
+});
+/***************************** POST API ***********************/
+/*
+Route             /publication/new
+Description       Add new publication
+Access            PUBLIC
+Parameter         None
+Methods           POST
+*/
+booksy.post("/publication/new",(req,res)=>{
+  const newPublication = req.body;   /* requesting to server for inserting an object into our database(body)(existing set of object)
+                                   so req.body fetch the body of the request */
+  database.publication.push(newPublication);
+  return res.json({updatedPublications:database.publication});
 });
 
 booksy.listen(3000,()=>{
