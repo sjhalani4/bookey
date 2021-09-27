@@ -1,8 +1,17 @@
+require("dotenv").config();
+
 const express = require("express");
+//mongoose (asynchronous interpreter)
+const mongoose= require("mongoose");
 //body-parser
 const bodyParser = require("body-parser");
 //Database
-const database= require("./database");
+const database= require("./database/database");
+
+//Models
+const BookModel = require("./database/book");
+const AuthorModel = require("./database/author");
+const PublicationModel = require("./database/publication");
 
 //Initialize express
 const booksy = express();
@@ -10,6 +19,9 @@ const booksy = express();
 //Initialize body-bodyParser
 booksy.use(bodyParser.urlencoded({extended:true}));
 booksy.use(bodyParser.json());
+
+mongoose.connect(process.env.MONGO_URL
+).then(() => console.log("Connection Established"));
 /*----------------------BOOKS-------------------------------------------*/
 
 /***************************** GET API ***********************/
@@ -20,8 +32,9 @@ Access            PUBLIC
 Parameter         None
 Methods           GET
 */
-booksy.get("/",(req,res)=>{
-  return res.json({books:database.books});
+booksy.get("/",async (req,res)=>{
+  const getAllBooks = await BookModel.find();
+  return res.json(getAllBooks);
 });
 /*----------------------------------------------------------------------------*/
 
@@ -32,11 +45,10 @@ Access            PUBLIC
 Parameter         isbn
 Methods           GET
 */
-booksy.get("/is/:isbn",(req,res)=>{
-  const getSpecificBook = database.books.filter(
-    (book)=> book.ISBN === req.params.isbn
-  )
-  if(getSpecificBook.length===0){
+booksy.get("/is/:isbn",async(req,res)=>{
+const getSpecificBook= await BookModel.findOne({ISBN:req.params.isbn});
+  //In mongoose we can't use .length property but we can use null operator
+  if(!getSpecificBook){
     return res.json({error:`No book found for the ISBN of ${req.params.isbn}`})
   }
   return res.json ({book:getSpecificBook})
@@ -50,14 +62,13 @@ Parameter         category
 Methods           GET
 */
 
-booksy.get("/c/:category",(req,res)=>{
-  const getSpecificBook= database.books.filter(
-    (book)=> book.category.includes(req.params.category)
-  )
-  if(getSpecificBook.length===0){
-    return res.json({error:`No book found for ${req.params.category} category`})
-  }
-  return res.json ({book:getSpecificBook})
+booksy.get("/c/:category",async(req,res)=>{
+  const getSpecificBook= await BookModel.findOne({category:req.params.category});
+    //In mongoose we can't use .length property but we can use null operator
+    if(!getSpecificBook){
+      return res.json({error:`No book found for the category of ${req.params.category}`})
+    }
+    return res.json ({book:getSpecificBook})
 
 });
 /*----------------------------------------------------------------------------*/
@@ -68,17 +79,15 @@ Access            PUBLIC
 Parameter         lang
 Methods           GET
 */
-booksy.get("/l/:lang" , (req,res)=> {
-  const getSpecificBook = database.books.filter(
-    (book)=> book.language === req.params.lang
-  )
-  if(getSpecificBook.length===0){
-    return res.json({error:`No book found for ${req.params.lang} language`})
-  }
-  return res.json ({book:getSpecificBook})
+booksy.get("/l/:lang" , async(req,res)=> {
+  const getSpecificBook= await BookModel.findOne({language:req.params.lang});
+    //In mongoose we can't use .length property but we can use null operator
+    if(!getSpecificBook){
+      return res.json({error:`No book found for ${req.params.lang} language`})
+    }
+    return res.json ({book:getSpecificBook})
 
-});
-
+  });
 /***************************** POST API ***********************/
 /*
 Route             /book/new
@@ -87,11 +96,14 @@ Access            PUBLIC
 Parameter         None
 Methods           POST
 */
-booksy.post("/book/new",(req,res)=>{
-  const newBook = req.body;   /* requesting to server for inserting an object into our database(body)(existing set of object)
-                                   so req.body fetch the body of the request */
-  database.books.push(newBook);
-  return res.json({updatedBooks:database.books});
+booksy.post("/book/new",async(req,res)=>{
+  const {newBook} = req.body;
+  const AddNewBook= BookModel.create(newBook);
+
+  return res.json({
+    books:newBook,
+    message:"Book was added!!"
+  });
 });
 /*----------------------------------------------------------------------------*/
 /***************************** DELETE API ***********************/
@@ -157,8 +169,9 @@ Access            PUBLIC
 Parameter         None
 Methods           GET
 */
-booksy.get("/author", (req,res)=>{
-return res.json({authors:database.author});
+booksy.get("/author", async (req,res)=>{
+  const getAllAuthors = await AuthorModel.find();
+return res.json(getAllAuthors);
 
 });
 /*----------------------------------------------------------------------------*/
@@ -169,12 +182,11 @@ Access            PUBLIC
 Parameter         id
 Methods           GET
 */
-booksy.get("/author/:id", (req,res)=>{
+booksy.get("/author/:id", async(req,res)=>{
+  const getSpecificAuthor = await AuthorModel.findOne({id:parseInt(req.params.id)})
 
-  const getSpecificAuthor = database.author.filter(
-    (author) => author.id===parseInt(req.params.id)
-  )
-  if(getSpecificAuthor.length===0){
+
+  if(!getSpecificAuthor){
     return res.json({error:`No author found for ${req.params.id} id`})
   }
   return res.json ({author:getSpecificAuthor})
@@ -188,11 +200,9 @@ Access            PUBLIC
 Parameter         isbn
 Methods           GET
 */
-booksy.get("/author/books/:isbn",(req,res)=>{
-  const getSpecificAuthor=database.author.filter(
-    (author)=>author.books.includes(req.params.isbn)
-  );
-  if(getSpecificAuthor.length===0){
+booksy.get("/author/books/:isbn",async(req,res)=>{
+const getSpecificAuthor=await AuthorModel.findOne({books:req.params.isbn});
+  if(!getSpecificAuthor){
     return res.json({error:`No author found for the book of ${req.params.isbn} id`});
   }
   return res.json ({author:getSpecificAuthor})
@@ -205,12 +215,16 @@ Access            PUBLIC
 Parameter         None
 Methods           POST
 */
-booksy.post("/author/new",(req,res)=>{
-  const newAuthor = req.body;   /* requesting to server for inserting an object into our database(body)(existing set of object)
-                                   so req.body fetch the body of the request */
-  database.author.push(newAuthor);
-  return res.json({updatedAuthors:database.author});
-});
+booksy.post("/author/new",async(req,res)=>{
+  const { newAuthor } = req.body;
+  const addNewAuthor = AuthorModel.create(newAuthor);
+    return res.json(
+      {
+        author: addNewAuthor,
+        message: "Author was added!!!"
+      }
+    );
+  });
 /*----------------------------------Publications------------------------------------------*/
 /*
 Route             /publication
@@ -219,8 +233,9 @@ Access            PUBLIC
 Parameter         None
 Methods           GET
 */
-booksy.get("/publication",(req,res)=>{
-    return res.json({Publications:database.publication});
+booksy.get("/publication",async(req,res)=>{
+  const getAllPublications = await PublicationModel.find();
+    return res.json(getAllPublications);
 });
 /*----------------------------------------------------------------------------*/
 /*
@@ -230,12 +245,10 @@ Access            PUBLIC
 Parameter         pub
 Methods           GET
 */
-booksy.get("/publication/:pub",(req,res)=>{
-  const getSpecificPublication = database.publication.filter(
-    (publication)=> publication.id === parseInt(req.params.pub)
-  );
+booksy.get("/publication/:pub",async(req,res)=>{
+  const getSpecificPublication = await PublicationModel.findOne({id:parseInt(req.params.pub)});
 
-if(getSpecificPublication.length===0){
+if(!getSpecificPublication){
   return res.json({error:`No publication found  of ${req.params.pub} id`});
 }
 return res.json ({publications:getSpecificPublication})
@@ -248,11 +261,11 @@ Access            PUBLIC
 Parameter         isbn
 Methods           GET
 */
-booksy.get("/publication/books/:isbn", (req,res)=>{
-  const getSpecificPublication= database.publication.filter(
-    (publication)=> publication.books.includes(req.params.isbn)
-  );
-  if(getSpecificPublication.length===0){
+booksy.get("/publication/books/:isbn", async(req,res)=>{
+
+  const getSpecificPublication= await PublicationModel.findOne({books:req.params.isbn})
+
+  if(!getSpecificPublication){
     return res.json({error:`No publication found for the book of ${req.params.isbn} id`})
   }
   return res.json ({publications:getSpecificPublication});
@@ -265,11 +278,15 @@ Access            PUBLIC
 Parameter         None
 Methods           POST
 */
-booksy.post("/publication/new",(req,res)=>{
-  const newPublication = req.body;   /* requesting to server for inserting an object into our database(body)(existing set of object)
-                                   so req.body fetch the body of the request */
-  database.publication.push(newPublication);
-  return res.json({updatedPublications:database.publication});
+booksy.post("/publication/new",async(req,res)=>{
+  const {newPublication} = req.body;
+const addNewPublication = PublicationModel.create(newPublication)
+
+
+  return res.json({
+    publication:addNewPublication,
+    message:"publication added"
+  });
 });
 /***************************** PUT API ***********************/
 /*
